@@ -1,0 +1,19 @@
+{
+  "name": "k6-test",
+  "version": "1.0.0",
+  "description": "Collector of tests from k6",
+  "main": "main.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "k6"
+  ],
+  "author": "Jackson Castro",
+  "license": "ISC",
+  "dependencies": {
+    "aws-sdk": "^2.747.0",
+    "moment-timezone": "^0.5.31",
+    "prometheus-query": "^2.1.0"
+  }
+}
