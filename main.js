@@ -10,14 +10,14 @@ const SECRET_KEY = process.env.SECRET_KEY;
 const PROMETHEUS_URL = process.env.PROMETHEUS_URL || 'http://prometheus.istio-system.svc.cluster.local:9090';
 const SCRIPT_PATH = process.env.SCRIPT_PATH || '/k6-script.js';
 const METRICS_PATH = process.env.METRICS_PATH || '/metrics.json';
-const TITTE = process.env.TITTE || 'k6';
+const TITLE = process.env.TITLE || 'k6';
 const OUTPUT = '/tmp/output.json';
 
 init();
 
 function init() {
     const time = getTime();
-    const title = `${TITTE}-${time}`;
+    const title = `${TITLE}-${time}`;
 
     runTest(title);
 }
@@ -67,7 +67,7 @@ function queryPrometheus(title) {
             uploadFile(title, `${metric.name}.json`, series);
         });
         console.log('Finished');
-    });    
+    });
 }
 
 function getS3() {
