@@ -44,8 +44,6 @@ function runTest(title) {
     });
 }
 
-// Data, hora, e uma string qualquer que vc passar como parâmetro.
-// A string viria primeiro, depois a data e por último a hora de início, com minutos d segundos.
 function afterTest(title) {
     const time = getTime();
     const content = fs.readFileSync(OUTPUT);
@@ -53,7 +51,6 @@ function afterTest(title) {
     uploadFile(title, 'summary.json', content);
     uploadFile(title, 'p95.txt', `${p95}`);
     queryPrometheus(title);
-
 }
 
 function queryPrometheus(title) {
