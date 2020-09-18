@@ -1,5 +1,4 @@
 const fs = require('fs');
-const moment = require('moment-timezone');
 const AWS = require('aws-sdk');
 const { spawn } = require('child_process');
 const PrometheusQuery = require('prometheus-query');
@@ -10,19 +9,24 @@ const SECRET_KEY = process.env.SECRET_KEY;
 const PROMETHEUS_URL = process.env.PROMETHEUS_URL || 'http://prometheus.istio-system.svc.cluster.local:9090';
 const SCRIPT_PATH = process.env.SCRIPT_PATH || '/k6-script.js';
 const METRICS_PATH = process.env.METRICS_PATH || '/metrics.json';
+const NUMBER_EXECUTIONS = parseInt(process.env.NUMBER_EXECUTIONS || 3);
 const TITLE = process.env.TITLE || 'k6';
 const OUTPUT = '/tmp/output.json';
 
 init();
 
 function init() {
-    const time = getTime();
-    const title = `${TITLE}-${time}`;
-
-    runTest(title);
+    test(1);
 }
 
-function runTest(title) {
+function test(iteration) {
+
+    console.info('Test iteration: ' + iteration);
+
+    runTest(iteration);
+}
+
+function runTest(iteration) {
     const command = spawn('k6', ['run', `--summary-export=${OUTPUT}`, SCRIPT_PATH]);
     command.stdout.on('data', data => {
         console.log(`${data}`);
@@ -39,21 +43,31 @@ function runTest(title) {
     command.on('close', code => {
         console.log(`child process exited with code ${code}`);
         if (code === 0) {
-            afterTest(title);
+            afterTest(iteration);
         }
     });
 }
 
-function afterTest(title) {
-    const time = getTime();
+function afterTest(iteration) {
     const content = fs.readFileSync(OUTPUT);
-    const p95 = JSON.parse(content).metrics.iteration_duration['p(95)'];
-    uploadFile(title, 'summary.json', content);
-    uploadFile(title, 'p95.txt', `${p95}`);
-    queryPrometheus(title);
+    const summary = JSON.parse(content);
+
+    if (summary.metrics &&
+        summary.metrics.iteration_duration &&
+        typeof summary.metrics.iteration_duration['p(95)'] !== 'undefined') {
+        const p95 = summary.metrics.iteration_duration['p(95)'];
+        uploadFile(TITLE, `p95-${iteration}.txt`, `${p95}`);
+    }
+
+    uploadFile(TITLE, `summary-${iteration}.json`, content);
+    queryPrometheus(TITLE, iteration);
+
+    if (++iteration <= NUMBER_EXECUTIONS) {
+        test(iteration)
+    }
 }
 
-function queryPrometheus(title) {
+function queryPrometheus(folder, iteration) {
 
     const content = fs.readFileSync(METRICS_PATH);
     const metrics = JSON.parse(content);
@@ -61,7 +75,8 @@ function queryPrometheus(title) {
     metrics.forEach(metric => {
         console.log(`Run metric ${metric.name}`);
         executeQuery(metric, series => {
-            uploadFile(title, `${metric.name}.json`, series);
+            const name = `${metric.name}-${iteration}.json`;
+            uploadFile(folder, name, series);
         });
         console.log('Finished');
     });
@@ -105,10 +120,4 @@ function executeQuery(metric, callback) {
             callback(JSON.stringify(series, null, '\t'));
         })
         .catch(console.error);
-}
-
-function getTime() {
-    const now = new Date();
-    const timezone = moment(now).tz('America/Fortaleza');
-    return timezone.format('YYYY-MM-DD-HH-mm-ss')
 }

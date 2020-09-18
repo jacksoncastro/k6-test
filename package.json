@@ -13,7 +13,6 @@
   "license": "ISC",
   "dependencies": {
     "aws-sdk": "^2.747.0",
-    "moment-timezone": "^0.5.31",
     "prometheus-query": "^2.1.0"
   }
 }
