@@ -116,7 +116,12 @@ function executeQuery(metric, callback) {
 
     pq.instantQuery(metric.query)
         .then((result) => {
-            const series = result.result;
+            const series = result.result.map(serie => {
+                return {
+                    "labels": serie.metric.labels,
+                    "value": serie.value.value
+                };
+            });
             callback(JSON.stringify(series, null, '\t'));
         })
         .catch(console.error);

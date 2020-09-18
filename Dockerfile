@@ -8,11 +8,13 @@ RUN apk add --update npm
 
 RUN mkdir /app
 
-COPY package*.json main.js /app/
+COPY package*.json /app/
 
 WORKDIR /app
 
 RUN npm install
+
+COPY main.js ./
 
 USER k6
 
