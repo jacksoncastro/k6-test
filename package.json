@@ -13,6 +13,7 @@
   "license": "ISC",
   "dependencies": {
     "aws-sdk": "^2.747.0",
+    "json2csv": "^5.0.1",
     "prometheus-query": "^2.1.0"
   }
 }

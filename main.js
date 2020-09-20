@@ -1,5 +1,6 @@
 const fs = require('fs');
 const AWS = require('aws-sdk');
+const { parse } = require('json2csv');
 const { spawn } = require('child_process');
 const PrometheusQuery = require('prometheus-query');
 
@@ -75,7 +76,7 @@ function queryPrometheus(folder, iteration) {
     metrics.forEach(metric => {
         console.log(`Run metric ${metric.name}`);
         executeQuery(metric, series => {
-            const name = `${metric.name}-${iteration}.json`;
+            const name = `${metric.name}-${iteration}.csv`;
             uploadFile(folder, name, series);
         });
         console.log('Finished');
@@ -111,18 +112,24 @@ function uploadFile(folder, file, content) {
 function executeQuery(metric, callback) {
     const pq = new PrometheusQuery({
         endpoint: `${PROMETHEUS_URL}`,
-        baseURL: "/api/v1"
+        baseURL: '/api/v1'
     });
 
     pq.instantQuery(metric.query)
-        .then((result) => {
-            const series = result.result.map(serie => {
-                return {
-                    "labels": serie.metric.labels,
-                    "value": serie.value.value
-                };
-            });
-            callback(JSON.stringify(series, null, '\t'));
+        .then(result => {
+            if (result.result && result.result.length > 0) {
+                const series = result.result.map(serie => {
+                    return {
+                        ...serie.metric.labels,
+                        value: serie.value.value
+                    };
+                });
+    
+                const csv = parse(series, {
+                    includeEmptyRows: true
+                });
+                callback(csv);
+            }
         })
         .catch(console.error);
 }
