@@ -118,16 +118,30 @@ function executeQuery(metric, callback) {
     pq.instantQuery(metric.query)
         .then(result => {
             if (result.result && result.result.length > 0) {
-                const series = result.result.map(serie => {
+                let series = result.result.map(serie => {
                     return {
                         ...serie.metric.labels,
                         value: serie.value.value
                     };
                 });
-    
-                const csv = parse(series, {
+
+                let opts = {
                     includeEmptyRows: true
-                });
+                };
+
+                if (metric.columns) {
+                    opts = Object.assign(opts, {
+                        fields: metric.columns
+                    });
+                }
+
+                if (metric.sort) {
+                    series = series.sort((first, second) => {
+                        return first[metric.sort].localeCompare(second[metric.sort]);
+                    });
+                }
+    
+                const csv = parse(series, opts);
                 callback(csv);
             }
         })
