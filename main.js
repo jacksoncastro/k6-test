@@ -1,5 +1,6 @@
 const fs = require('fs');
 const AWS = require('aws-sdk');
+const sort = require('fast-sort');
 const { parse } = require('json2csv');
 const { spawn } = require('child_process');
 const PrometheusQuery = require('prometheus-query');
@@ -129,16 +130,14 @@ function executeQuery(metric, callback) {
                     includeEmptyRows: true
                 };
 
-                if (metric.columns) {
+                if (metric.columns && metric.columns.length > 0) {
                     opts = Object.assign(opts, {
                         fields: metric.columns
                     });
                 }
 
-                if (metric.sort) {
-                    series = series.sort((first, second) => {
-                        return first[metric.sort].localeCompare(second[metric.sort]);
-                    });
+                if (metric.sort && metric.sort.length > 0) {
+                    sort(series).asc(metric.sort);
                 }
     
                 const csv = parse(series, opts);
