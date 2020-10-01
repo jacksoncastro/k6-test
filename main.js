@@ -1,5 +1,6 @@
 const fs = require('fs');
 const AWS = require('aws-sdk');
+const moment = require('moment');
 const sort = require('fast-sort');
 const { parse } = require('json2csv');
 const { spawn } = require('child_process');
@@ -30,6 +31,7 @@ function test(iteration) {
 
 function runTest(iteration) {
     const command = spawn('k6', ['run', `--summary-export=${OUTPUT}`, SCRIPT_PATH]);
+    const now = moment();
     command.stdout.on('data', data => {
         console.log(`${data}`);
     });
@@ -45,12 +47,17 @@ function runTest(iteration) {
     command.on('close', code => {
         console.log(`child process exited with code ${code}`);
         if (code === 0) {
-            afterTest(iteration);
+            const end = moment();
+            const duration = end.diff(now, 'seconds') + 's';
+            setTimeout(() => {
+                afterTest(iteration, duration);
+            }, 30000);
+            // afterTest(iteration, duration);
         }
     });
 }
 
-function afterTest(iteration) {
+function afterTest(iteration, duration) {
     const content = fs.readFileSync(OUTPUT);
     const summary = JSON.parse(content);
 
@@ -62,21 +69,21 @@ function afterTest(iteration) {
     }
 
     uploadFile(TITLE, `summary-${iteration}.json`, content);
-    queryPrometheus(TITLE, iteration);
+    queryPrometheus(TITLE, iteration, duration);
 
     if (++iteration <= NUMBER_EXECUTIONS) {
         test(iteration)
     }
 }
 
-function queryPrometheus(folder, iteration) {
+function queryPrometheus(folder, iteration, duration) {
 
     const content = fs.readFileSync(METRICS_PATH);
     const metrics = JSON.parse(content);
 
     metrics.forEach(metric => {
         console.log(`Run metric ${metric.name}`);
-        executeQuery(metric, series => {
+        executeQuery(metric, duration, series => {
             const name = `${metric.name}-${iteration}.csv`;
             uploadFile(folder, name, series);
         });
@@ -110,13 +117,14 @@ function uploadFile(folder, file, content) {
     });
 };
 
-function executeQuery(metric, callback) {
+function executeQuery(metric, duration, callback) {
     const pq = new PrometheusQuery({
         endpoint: `${PROMETHEUS_URL}`,
         baseURL: '/api/v1'
     });
 
-    pq.instantQuery(metric.query)
+    const query = metric.query.replace(/\${DURATION}/g, duration);
+    pq.instantQuery(query)
         .then(result => {
             if (result.result && result.result.length > 0) {
                 let series = result.result.map(serie => {
