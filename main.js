@@ -2,6 +2,7 @@ const fs = require('fs');
 const AWS = require('aws-sdk');
 const moment = require('moment');
 const sort = require('fast-sort');
+const request = require('request');
 const { parse } = require('json2csv');
 const { spawn } = require('child_process');
 const PrometheusQuery = require('prometheus-query');
@@ -25,7 +26,7 @@ function init() {
 function test(iteration) {
 
     console.info('Test iteration: ' + iteration);
-
+    cleanPrometheus();
     runTest(iteration);
 }
 
@@ -153,4 +154,42 @@ function executeQuery(metric, duration, callback) {
             }
         })
         .catch(console.error);
+}
+
+function cleanPrometheus() {
+    deleteSeries();
+    console.log('Deleted series prometheus');
+    cleanTombstones();
+    console.log('Cleaned tombstones prometheus');
+}
+
+async function deleteSeries() {
+    const url = `${PROMETHEUS_URL}/api/v1/admin/tsdb/delete_series?match[]={job="envoy-stats"}`;
+    await requestPost(url, 204);
+}
+
+async function cleanTombstones() {
+    const url = `${PROMETHEUS_URL}/api/v1/admin/tsdb/clean_tombstones`;
+    await requestPost(url, 204);
+}
+
+function requestPost(url, sucessCode) {
+    const options = {
+        'method': 'POST',
+        'url': url
+    };
+
+    return new Promise((resolve, reject) => {
+        request(options, (error, response) => {
+            if (error) {
+                Promise.reject(new Error(error));
+            };
+    
+            if (response.statusCode === sucessCode) {
+                resolve();
+            } else {
+                reject();
+            }
+        });
+    });
 }

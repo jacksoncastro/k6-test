@@ -16,6 +16,7 @@
     "fast-sort": "^2.2.0",
     "json2csv": "^5.0.1",
     "moment": "^2.29.0",
-    "prometheus-query": "^2.1.0"
+    "prometheus-query": "^2.1.0",
+    "request": "^2.88.2"
   }
 }
