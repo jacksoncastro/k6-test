@@ -13,24 +13,23 @@ const SECRET_KEY = process.env.SECRET_KEY;
 const PROMETHEUS_URL = process.env.PROMETHEUS_URL || 'http://prometheus.istio-system.svc.cluster.local:9090';
 const SCRIPT_PATH = process.env.SCRIPT_PATH || '/k6-script.js';
 const METRICS_PATH = process.env.METRICS_PATH || '/metrics.json';
-const NUMBER_EXECUTIONS = parseInt(process.env.NUMBER_EXECUTIONS || 3);
 const TITLE = process.env.TITLE || 'k6';
+const ITERATION = process.env.ITERATION || '1';
 const OUTPUT = '/tmp/output.json';
 
 init();
 
 function init() {
-    test(1);
+    test();
 }
 
-function test(iteration) {
+function test() {
 
-    console.info('Test iteration: ' + iteration);
     cleanPrometheus();
-    runTest(iteration);
+    runTest();
 }
 
-function runTest(iteration) {
+function runTest() {
     const command = spawn('k6', ['run', `--summary-export=${OUTPUT}`, SCRIPT_PATH]);
     const now = moment();
     command.stdout.on('data', data => {
@@ -51,33 +50,22 @@ function runTest(iteration) {
             const end = moment();
             const duration = end.diff(now, 'seconds') + 's';
             setTimeout(() => {
-                afterTest(iteration, duration);
+                afterTest(duration);
             }, 30000);
-            // afterTest(iteration, duration);
+            // afterTest(duration);
         }
     });
 }
 
-function afterTest(iteration, duration) {
+function afterTest(duration) {
     const content = fs.readFileSync(OUTPUT);
     const summary = JSON.parse(content);
 
-    if (summary.metrics &&
-        summary.metrics.iteration_duration &&
-        typeof summary.metrics.iteration_duration['p(95)'] !== 'undefined') {
-        const p95 = summary.metrics.iteration_duration['p(95)'];
-        uploadFile(TITLE, `p95-${iteration}.txt`, `${p95}`);
-    }
-
-    uploadFile(TITLE, `summary-${iteration}.json`, content);
-    queryPrometheus(TITLE, iteration, duration);
-
-    if (++iteration <= NUMBER_EXECUTIONS) {
-        test(iteration)
-    }
+    uploadFile(TITLE, `summary-${ITERATION}.json`, content);
+    queryPrometheus(TITLE, duration);
 }
 
-function queryPrometheus(folder, iteration, duration) {
+function queryPrometheus(folder, duration) {
 
     const content = fs.readFileSync(METRICS_PATH);
     const metrics = JSON.parse(content);
@@ -85,7 +73,7 @@ function queryPrometheus(folder, iteration, duration) {
     metrics.forEach(metric => {
         console.log(`Run metric ${metric.name}`);
         executeQuery(metric, duration, series => {
-            const name = `${metric.name}-${iteration}.csv`;
+            const name = `${metric.name}-${ITERATION}.csv`;
             uploadFile(folder, name, series);
         });
         console.log('Finished');
